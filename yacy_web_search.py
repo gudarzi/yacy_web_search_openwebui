@@ -1,29 +1,23 @@
 """
-title: Web Search using YaCy
+title: Web Search using YaCy (The Decentralized Web Search Engine)
 author: Ehsan Gudarzi
 author_url: https://gudarzi.com
-version: 1.0
+version: 1.1
 license: MIT
 """
-
 import asyncio
 import aiohttp
 from typing import Callable, Any, Optional, List
 from urllib.parse import quote
 from pydantic import BaseModel, Field
 from bs4 import BeautifulSoup
-
 EmitterType = Optional[Callable[[dict], Any]]
-
-
 class EventEmitter:
     def __init__(self, event_emitter: EmitterType):
         self.event_emitter = event_emitter
-
     async def emit(self, event_type: str, data: dict):
         if self.event_emitter:
             await self.event_emitter({"type": event_type, "data": data})
-
     async def update_status(
         self, description: str, done: bool, action: str, urls: List[str]
     ):
@@ -31,7 +25,6 @@ class EventEmitter:
             "status",
             {"done": done, "action": action, "description": description, "urls": urls},
         )
-
     async def send_citation(self, title: str, url: str, content: str):
         await self.emit(
             "citation",
@@ -40,12 +33,9 @@ class EventEmitter:
                 "metadata": [{"name": title, "source": url, "html": False}],
             },
         )
-
-
 class Tools:
     def __init__(self):
         self.valves = self.Valves()
-
     class Valves(BaseModel):
         YACY_URL: str = Field(
             default="https://ya.gudarzi.com/solr/select",
@@ -59,7 +49,6 @@ class Tools:
             default=2000,
             description="Truncation length for web content",
         )
-
     async def yacy_search(
         self, query: str, user_request: str, __event_emitter__: EmitterType = None
     ) -> str:
@@ -116,7 +105,6 @@ class Tools:
             error_message = f"Error during search: {str(e)}"
             await emitter.update_status(error_message, True, "web_search", [])
             return error_message
-
     async def web_scrape(
         self,
         urls: List[str],
@@ -138,31 +126,29 @@ class Tools:
         await emitter.update_status(
             f"Fetching content from {len(urls)} URLs", False, "web_scrape", urls
         )
-
         async def process_url(url, title):
             try:
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url) as response:
                         response.raise_for_status()
                         content = await response.text()
+                soup = BeautifulSoup(content, "html.parser")
+                text_content = soup.get_text(separator=' ', strip=True)
 
                 if title == "Title not available":
-                    soup = BeautifulSoup(content, "html.parser")
                     title_tag = soup.find("title")
                     if title_tag:
                         title = title_tag.string.strip()
                     else:
                         title = "Title not available"
-
-                await emitter.send_citation(title, url, content)
-                return f"# Title: {title}\n# URL: {url}\n# Content: {content}\n"
+                await emitter.send_citation(title, url, text_content)
+                return f"# Title: {title}\n# URL: {url}\n# Content: {text_content}\n"
             except aiohttp.ClientError as e:
                 error_message = f"Error fetching URL {url}: {str(e)}"
                 await emitter.update_status(error_message, False, "web_scrape", [url])
                 return (
                     f"# Fetch Failed!\n# URL: {url}\n# Error Message: {error_message}\n"
                 )
-
         tasks = [process_url(url, title) for url, title in zip(urls, titles)]
         results = await asyncio.gather(*tasks)
         combined_results.extend(results)
