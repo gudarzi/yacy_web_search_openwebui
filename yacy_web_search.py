@@ -2,6 +2,7 @@
 title: Web Search using YaCy (The Decentralized Web Search Engine)
 author: Ehsan Gudarzi
 author_url: https://gudarzi.com
+openwebui_link: https://openwebui.com/t/gudarzi/yacy_web_search
 version: 1.1
 license: MIT
 """
@@ -53,7 +54,7 @@ class Tools:
         self, query: str, user_request: str, __event_emitter__: EmitterType = None
     ) -> str:
         """
-        Searches the web using the a private YaCy instance based on the query content and returns links and descriptions.
+        Searches the web using the a private YaCy web search instance based on the query content and returns links and descriptions.
         This function is called only if a search request is explicitly made.
         :param query: The search query
         :param user_request: The user's original request or query
